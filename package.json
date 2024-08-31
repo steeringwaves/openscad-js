@@ -1,6 +1,6 @@
 {
   "name": "@steeringwaves/openscad-js",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "openscad code generator for javascript",
   "author": "steeringwaves",
   "license": "ISC",
