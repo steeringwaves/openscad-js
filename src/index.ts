@@ -3,122 +3,6 @@ interface IFileSystem {
 	writeFileSync(file: string, data: string): void;
 }
 
-const indent = "\t";
-
-function writeNode(depth: number, node: Scad.Node): string {
-	if ("module" === node.type) {
-		const props = <Scad.IModuleProps>node.props;
-		return writeModule(depth, props.name, props.args, props.children);
-	}
-
-	if ("object" === node.type) {
-		const props = <Scad.IObjectProps>node.props;
-		return writeObject(depth, props.name, props.args);
-	}
-
-	if ("modifier" === node.type) {
-		const props = <Scad.IModifierProps>node.props;
-		return writeModifier(depth, props.symbol, props.child);
-	}
-
-	if ("variable" === node.type) {
-		const props = <Scad.IVariableProps>node.props;
-		return writeVariable(depth, props.name, props.args);
-	}
-
-	throw new Error(`unexpected node ${node}`);
-}
-
-function writeIndent(depth: number): string {
-	return indent.repeat(depth);
-}
-
-function writeModule(depth: number, name: string, args: any[], children: Scad.Node[]): string {
-	return `${name}(${writeArgs(args)}) {
-${children.map((c) => writeIndent(depth + 1) + writeNode(depth + 1, c)).join("\n")}
-${writeIndent(depth)}}`;
-}
-
-function writeObject(depth: number, name: string, args: any[]): string {
-	return `${name}(${writeArgs(args)});`;
-}
-
-function writeVariable(depth: number, name: string, args: any[]): string {
-	return `${name} = ${writeArgs(args)};`;
-}
-
-function writeArgs(args: any[]): string {
-	return args
-		.filter(
-			(arg) =>
-				"number" === typeof arg ||
-				"boolean" === typeof arg ||
-				"string" === typeof arg ||
-				Array.isArray(arg) ||
-				Object.entries(arg).length > 0
-		)
-		.map((arg) => writeValue(arg, true))
-		.join(", ");
-}
-
-function writeValue(value: any, isArg = false): string {
-	if (value instanceof Scad.Variable) {
-		return value.name;
-	}
-	if ("number" === typeof value || "boolean" === typeof value) {
-		return String(value);
-	}
-	if ("string" === typeof value) {
-		return `"${value.replace(/"/g, '"')}"`;
-	}
-	if (Array.isArray(value)) {
-		return `[${value.map((v) => writeValue(v)).join(", ")}]`;
-	}
-	if (isArg) {
-		return Object.entries(value)
-			.map(([k, v]) => `${k}=${writeValue(v)}`)
-			.join(", ");
-	}
-	throw new Error(`unexpected value ${value}`);
-}
-
-function writeModifier(depth: number, symbol: string, child: Scad.Node): string {
-	return symbol + writeNode(depth, child);
-}
-
-function compile(node: Scad.Node | Scad.Node[]): string {
-	if (Array.isArray(node)) {
-		return node.map((n) => writeNode(0, n)).join("\n");
-	}
-	return writeNode(0, node);
-}
-
-function defineModule(name: string) {
-	return (...args: any[]) => {
-		const result = function scadModule(...children: Scad.Node[]) {
-			return { type: "module", props: <Scad.IModuleProps>{ name, args, children } };
-		};
-		Object.assign(result, { type: "object", props: <Scad.IObjectProps>{ name, args } });
-		return result;
-	};
-}
-
-function defineModifier(symbol: string) {
-	return (child: Scad.Node) => ({ type: "modifier", props: <Scad.IModifierProps>{ symbol, child } });
-}
-
-const proxyModules = new Proxy(
-	{
-		_bg: defineModifier("%"),
-		_debug: defineModifier("#"),
-		_root: defineModifier("!"),
-		_disable: defineModifier("*")
-	},
-	{
-		get: (obj, prop) => (prop in obj ? obj[prop] : defineModule(prop as string))
-	}
-);
-
 namespace Scad {
 	export type IVariable<T> = Variable<T> | T;
 
@@ -161,13 +45,16 @@ namespace Scad {
 	}
 
 	export class Variable<T> {
+		public parent: Module;
+
 		public name: string;
 
 		public value: T;
 
 		public opts?: IVariableOpts;
 
-		constructor(name: string, value: T, opts?: IVariableOpts) {
+		constructor(parent: Module, name: string, value: T, opts?: IVariableOpts) {
+			this.parent = parent;
 			this.name = name;
 			this.value = value;
 			this.opts = opts;
@@ -180,11 +67,13 @@ namespace Scad {
 				comment += `// ${this.opts.comment}\n`;
 			}
 
-			return `${comment}${writeVariable(0, this.name, [this.value])}\n`;
+			return `${comment}${this.parent.writeVariable(0, this.name, [this.value])}\n`;
 		}
 	}
 
 	export class Specials {
+		public parent: Module;
+
 		public $fa: number | undefined; // minimum angle
 
 		public $fs: number | undefined; // minimum size
@@ -205,6 +94,10 @@ namespace Scad {
 
 		public $preview: boolean | undefined; // true in F5 preview, false for F6
 
+		constructor(parent: Module) {
+			this.parent = parent;
+		}
+
 		toString(): string {
 			const entries = Object.entries(this).filter(([k, v]) => undefined !== v);
 
@@ -212,23 +105,71 @@ namespace Scad {
 				return "";
 			}
 
-			return `/* Specials */\n\n${entries.map(([k, v]) => writeVariable(0, k, [v])).join("\n")}\n`;
+			return `/* Specials */\n\n${entries.map(([k, v]) => this.parent.writeVariable(0, k, [v])).join("\n")}\n`;
 		}
 	}
 
+	export interface IModuleOptions {
+		fs?: IFileSystem;
+		indent?: string;
+		banner?: string;
+	}
+
 	export class Module {
-		public any = proxyModules as any;
+		public any: any;
 
-		public modules: Modules = (<any>proxyModules) as Modules;
+		public modules: Modules;
 
-		public specials: Specials = new Specials();
+		public specials: Specials;
 
 		private entires: Scad.Node[] = [];
 
 		private variables: Scad.Variable<any>[] = [];
 
+		private opts: IModuleOptions;
+
+		public indent = "\t";
+
+		public banner = `/* AUTOGENERATED FILE USING @steeringwaves/openscad-js DO NOT MODIFY */\n`;
+
+		public fs: IFileSystem | undefined;
+
+		constructor(opts: IModuleOptions = {}) {
+			const proxyModules = new Proxy(
+				{
+					_bg: this.defineModifier("%"),
+					_debug: this.defineModifier("#"),
+					_root: this.defineModifier("!"),
+					_disable: this.defineModifier("*")
+				},
+				{
+					get: (obj, prop) => (prop in obj ? obj[prop] : this.defineModule(prop as string))
+				}
+			);
+
+			this.any = proxyModules as any;
+
+			this.modules = (<any>proxyModules) as Modules;
+
+			this.specials = new Specials(this);
+
+			this.opts = opts;
+
+			if (undefined !== opts.fs) {
+				this.fs = opts.fs;
+			}
+
+			if (undefined !== opts.indent) {
+				this.indent = opts.indent;
+			}
+
+			if (undefined !== opts.banner) {
+				this.banner = opts.banner;
+			}
+		}
+
 		public addVariable<T>(name: string, value: T, opts?: IVariableOpts): Scad.Variable<T> {
-			const v = new Variable<T>(name, value, opts);
+			const v = new Variable<T>(this, name, value, opts);
 			this.variables.push(v);
 			return v;
 		}
@@ -280,22 +221,126 @@ namespace Scad {
 				variableText += `\n`;
 			}
 
-			return `/* AUTOGENERATED FILE USING @steeringwaves/openscad-js DO NOT MODIFY */\n\n${this.specials.toString()}\n${variableText}\n${compile(
-				this.entires
-			)}`;
+			return `${this.banner}\n${this.specials.toString()}\n${variableText}\n${this.compile(this.entires)}`;
 		}
 
-		public toFile(fs: IFileSystem, filename: string, verbose?: boolean): void {
+		public toFile(filename: string, verbose?: boolean): void {
+			if (!this.fs) {
+				throw new Error("no filesystem module provided");
+			}
+
 			const scadSrc = this.toString();
 
 			if (verbose) {
 				console.log(scadSrc);
 			}
-			fs.writeFileSync(filename, scadSrc);
+			this.fs.writeFileSync(filename, scadSrc);
 		}
 
-		public toScadFile(fs: IFileSystem, src: string, verbose?: boolean): void {
-			this.toFile(fs, sourceFilenameToScadFilename(src), verbose);
+		public toScadFile(src: string, verbose?: boolean): void {
+			this.toFile(sourceFilenameToScadFilename(src), verbose);
+		}
+
+		public writeNode(depth: number, node: Scad.Node): string {
+			if ("module" === node.type) {
+				const props = <Scad.IModuleProps>node.props;
+				return this.writeModule(depth, props.name, props.args, props.children);
+			}
+
+			if ("object" === node.type) {
+				const props = <Scad.IObjectProps>node.props;
+				return this.writeObject(depth, props.name, props.args);
+			}
+
+			if ("modifier" === node.type) {
+				const props = <Scad.IModifierProps>node.props;
+				return this.writeModifier(depth, props.symbol, props.child);
+			}
+
+			if ("variable" === node.type) {
+				const props = <Scad.IVariableProps>node.props;
+				return this.writeVariable(depth, props.name, props.args);
+			}
+
+			throw new Error(`unexpected node ${node}`);
+		}
+
+		public writeIndent(depth: number): string {
+			return this.indent.repeat(depth);
+		}
+
+		public writeModule(depth: number, name: string, args: any[], children: Scad.Node[]): string {
+			return `${name}(${this.writeArgs(args)}) {
+		${children.map((c) => this.writeIndent(depth + 1) + this.writeNode(depth + 1, c)).join("\n")}
+		${this.writeIndent(depth)}}`;
+		}
+
+		public writeObject(depth: number, name: string, args: any[]): string {
+			return `${name}(${this.writeArgs(args)});`;
+		}
+
+		public writeVariable(depth: number, name: string, args: any[]): string {
+			return `${name} = ${this.writeArgs(args)};`;
+		}
+
+		public writeArgs(args: any[]): string {
+			return args
+				.filter(
+					(arg) =>
+						"number" === typeof arg ||
+						"boolean" === typeof arg ||
+						"string" === typeof arg ||
+						Array.isArray(arg) ||
+						Object.entries(arg).length > 0
+				)
+				.map((arg) => this.writeValue(arg, true))
+				.join(", ");
+		}
+
+		public writeValue(value: any, isArg = false): string {
+			if (value instanceof Scad.Variable) {
+				return value.name;
+			}
+			if ("number" === typeof value || "boolean" === typeof value) {
+				return String(value);
+			}
+			if ("string" === typeof value) {
+				return `"${value.replace(/"/g, '"')}"`;
+			}
+			if (Array.isArray(value)) {
+				return `[${value.map((v) => this.writeValue(v)).join(", ")}]`;
+			}
+			if (isArg) {
+				return Object.entries(value)
+					.map(([k, v]) => `${k}=${this.writeValue(v)}`)
+					.join(", ");
+			}
+			throw new Error(`unexpected value ${value}`);
+		}
+
+		public writeModifier(depth: number, symbol: string, child: Scad.Node): string {
+			return symbol + this.writeNode(depth, child);
+		}
+
+		public compile(node: Scad.Node | Scad.Node[]): string {
+			if (Array.isArray(node)) {
+				return node.map((n) => this.writeNode(0, n)).join("\n");
+			}
+			return this.writeNode(0, node);
+		}
+
+		public defineModule(name: string) {
+			return (...args: any[]) => {
+				const result = function scadModule(...children: Scad.Node[]) {
+					return { type: "module", props: <Scad.IModuleProps>{ name, args, children } };
+				};
+				Object.assign(result, { type: "object", props: <Scad.IObjectProps>{ name, args } });
+				return result;
+			};
+		}
+
+		public defineModifier(symbol: string) {
+			return (child: Scad.Node) => ({ type: "modifier", props: <Scad.IModifierProps>{ symbol, child } });
 		}
 	}
 

@@ -1,110 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var indent = "\t";
-function writeNode(depth, node) {
-    if ("module" === node.type) {
-        var props = node.props;
-        return writeModule(depth, props.name, props.args, props.children);
-    }
-    if ("object" === node.type) {
-        var props = node.props;
-        return writeObject(depth, props.name, props.args);
-    }
-    if ("modifier" === node.type) {
-        var props = node.props;
-        return writeModifier(depth, props.symbol, props.child);
-    }
-    if ("variable" === node.type) {
-        var props = node.props;
-        return writeVariable(depth, props.name, props.args);
-    }
-    throw new Error("unexpected node ".concat(node));
-}
-function writeIndent(depth) {
-    return indent.repeat(depth);
-}
-function writeModule(depth, name, args, children) {
-    return "".concat(name, "(").concat(writeArgs(args), ") {\n").concat(children.map(function (c) { return writeIndent(depth + 1) + writeNode(depth + 1, c); }).join("\n"), "\n").concat(writeIndent(depth), "}");
-}
-function writeObject(depth, name, args) {
-    return "".concat(name, "(").concat(writeArgs(args), ");");
-}
-function writeVariable(depth, name, args) {
-    return "".concat(name, " = ").concat(writeArgs(args), ";");
-}
-function writeArgs(args) {
-    return args
-        .filter(function (arg) {
-        return "number" === typeof arg ||
-            "boolean" === typeof arg ||
-            "string" === typeof arg ||
-            Array.isArray(arg) ||
-            Object.entries(arg).length > 0;
-    })
-        .map(function (arg) { return writeValue(arg, true); })
-        .join(", ");
-}
-function writeValue(value, isArg) {
-    if (isArg === void 0) { isArg = false; }
-    if (value instanceof Scad.Variable) {
-        return value.name;
-    }
-    if ("number" === typeof value || "boolean" === typeof value) {
-        return String(value);
-    }
-    if ("string" === typeof value) {
-        return "\"".concat(value.replace(/"/g, '"'), "\"");
-    }
-    if (Array.isArray(value)) {
-        return "[".concat(value.map(function (v) { return writeValue(v); }).join(", "), "]");
-    }
-    if (isArg) {
-        return Object.entries(value)
-            .map(function (_a) {
-            var k = _a[0], v = _a[1];
-            return "".concat(k, "=").concat(writeValue(v));
-        })
-            .join(", ");
-    }
-    throw new Error("unexpected value ".concat(value));
-}
-function writeModifier(depth, symbol, child) {
-    return symbol + writeNode(depth, child);
-}
-function compile(node) {
-    if (Array.isArray(node)) {
-        return node.map(function (n) { return writeNode(0, n); }).join("\n");
-    }
-    return writeNode(0, node);
-}
-function defineModule(name) {
-    return function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i] = arguments[_i];
-        }
-        var result = function scadModule() {
-            var children = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                children[_i] = arguments[_i];
-            }
-            return { type: "module", props: { name: name, args: args, children: children } };
-        };
-        Object.assign(result, { type: "object", props: { name: name, args: args } });
-        return result;
-    };
-}
-function defineModifier(symbol) {
-    return function (child) { return ({ type: "modifier", props: { symbol: symbol, child: child } }); };
-}
-var proxyModules = new Proxy({
-    _bg: defineModifier("%"),
-    _debug: defineModifier("#"),
-    _root: defineModifier("!"),
-    _disable: defineModifier("*")
-}, {
-    get: function (obj, prop) { return (prop in obj ? obj[prop] : defineModule(prop)); }
-});
 var Scad;
 (function (Scad) {
     var Node = /** @class */ (function () {
@@ -116,7 +11,8 @@ var Scad;
     }());
     Scad.Node = Node;
     var Variable = /** @class */ (function () {
-        function Variable(name, value, opts) {
+        function Variable(parent, name, value, opts) {
+            this.parent = parent;
             this.name = name;
             this.value = value;
             this.opts = opts;
@@ -126,15 +22,17 @@ var Scad;
             if (this.opts && this.opts.comment) {
                 comment += "// ".concat(this.opts.comment, "\n");
             }
-            return "".concat(comment).concat(writeVariable(0, this.name, [this.value]), "\n");
+            return "".concat(comment).concat(this.parent.writeVariable(0, this.name, [this.value]), "\n");
         };
         return Variable;
     }());
     Scad.Variable = Variable;
     var Specials = /** @class */ (function () {
-        function Specials() {
+        function Specials(parent) {
+            this.parent = parent;
         }
         Specials.prototype.toString = function () {
+            var _this = this;
             var entries = Object.entries(this).filter(function (_a) {
                 var k = _a[0], v = _a[1];
                 return undefined !== v;
@@ -144,22 +42,44 @@ var Scad;
             }
             return "/* Specials */\n\n".concat(entries.map(function (_a) {
                 var k = _a[0], v = _a[1];
-                return writeVariable(0, k, [v]);
+                return _this.parent.writeVariable(0, k, [v]);
             }).join("\n"), "\n");
         };
         return Specials;
     }());
     Scad.Specials = Specials;
     var Module = /** @class */ (function () {
-        function Module() {
-            this.any = proxyModules;
-            this.modules = proxyModules;
-            this.specials = new Specials();
+        function Module(opts) {
+            if (opts === void 0) { opts = {}; }
+            var _this = this;
             this.entires = [];
             this.variables = [];
+            this.indent = "\t";
+            this.banner = "/* AUTOGENERATED FILE USING @steeringwaves/openscad-js DO NOT MODIFY */\n";
+            var proxyModules = new Proxy({
+                _bg: this.defineModifier("%"),
+                _debug: this.defineModifier("#"),
+                _root: this.defineModifier("!"),
+                _disable: this.defineModifier("*")
+            }, {
+                get: function (obj, prop) { return (prop in obj ? obj[prop] : _this.defineModule(prop)); }
+            });
+            this.any = proxyModules;
+            this.modules = proxyModules;
+            this.specials = new Specials(this);
+            this.opts = opts;
+            if (undefined !== opts.fs) {
+                this.fs = opts.fs;
+            }
+            if (undefined !== opts.indent) {
+                this.indent = opts.indent;
+            }
+            if (undefined !== opts.banner) {
+                this.banner = opts.banner;
+            }
         }
         Module.prototype.addVariable = function (name, value, opts) {
-            var v = new Variable(name, value, opts);
+            var v = new Variable(this, name, value, opts);
             this.variables.push(v);
             return v;
         };
@@ -205,17 +125,120 @@ var Scad;
                 }
                 variableText += "\n";
             }
-            return "/* AUTOGENERATED FILE USING @steeringwaves/openscad-js DO NOT MODIFY */\n\n".concat(this.specials.toString(), "\n").concat(variableText, "\n").concat(compile(this.entires));
+            return "".concat(this.banner, "\n").concat(this.specials.toString(), "\n").concat(variableText, "\n").concat(this.compile(this.entires));
         };
-        Module.prototype.toFile = function (fs, filename, verbose) {
+        Module.prototype.toFile = function (filename, verbose) {
+            if (!this.fs) {
+                throw new Error("no filesystem module provided");
+            }
             var scadSrc = this.toString();
             if (verbose) {
                 console.log(scadSrc);
             }
-            fs.writeFileSync(filename, scadSrc);
+            this.fs.writeFileSync(filename, scadSrc);
         };
-        Module.prototype.toScadFile = function (fs, src, verbose) {
-            this.toFile(fs, sourceFilenameToScadFilename(src), verbose);
+        Module.prototype.toScadFile = function (src, verbose) {
+            this.toFile(sourceFilenameToScadFilename(src), verbose);
+        };
+        Module.prototype.writeNode = function (depth, node) {
+            if ("module" === node.type) {
+                var props = node.props;
+                return this.writeModule(depth, props.name, props.args, props.children);
+            }
+            if ("object" === node.type) {
+                var props = node.props;
+                return this.writeObject(depth, props.name, props.args);
+            }
+            if ("modifier" === node.type) {
+                var props = node.props;
+                return this.writeModifier(depth, props.symbol, props.child);
+            }
+            if ("variable" === node.type) {
+                var props = node.props;
+                return this.writeVariable(depth, props.name, props.args);
+            }
+            throw new Error("unexpected node ".concat(node));
+        };
+        Module.prototype.writeIndent = function (depth) {
+            return this.indent.repeat(depth);
+        };
+        Module.prototype.writeModule = function (depth, name, args, children) {
+            var _this = this;
+            return "".concat(name, "(").concat(this.writeArgs(args), ") {\n\t\t").concat(children.map(function (c) { return _this.writeIndent(depth + 1) + _this.writeNode(depth + 1, c); }).join("\n"), "\n\t\t").concat(this.writeIndent(depth), "}");
+        };
+        Module.prototype.writeObject = function (depth, name, args) {
+            return "".concat(name, "(").concat(this.writeArgs(args), ");");
+        };
+        Module.prototype.writeVariable = function (depth, name, args) {
+            return "".concat(name, " = ").concat(this.writeArgs(args), ";");
+        };
+        Module.prototype.writeArgs = function (args) {
+            var _this = this;
+            return args
+                .filter(function (arg) {
+                return "number" === typeof arg ||
+                    "boolean" === typeof arg ||
+                    "string" === typeof arg ||
+                    Array.isArray(arg) ||
+                    Object.entries(arg).length > 0;
+            })
+                .map(function (arg) { return _this.writeValue(arg, true); })
+                .join(", ");
+        };
+        Module.prototype.writeValue = function (value, isArg) {
+            var _this = this;
+            if (isArg === void 0) { isArg = false; }
+            if (value instanceof Scad.Variable) {
+                return value.name;
+            }
+            if ("number" === typeof value || "boolean" === typeof value) {
+                return String(value);
+            }
+            if ("string" === typeof value) {
+                return "\"".concat(value.replace(/"/g, '"'), "\"");
+            }
+            if (Array.isArray(value)) {
+                return "[".concat(value.map(function (v) { return _this.writeValue(v); }).join(", "), "]");
+            }
+            if (isArg) {
+                return Object.entries(value)
+                    .map(function (_a) {
+                    var k = _a[0], v = _a[1];
+                    return "".concat(k, "=").concat(_this.writeValue(v));
+                })
+                    .join(", ");
+            }
+            throw new Error("unexpected value ".concat(value));
+        };
+        Module.prototype.writeModifier = function (depth, symbol, child) {
+            return symbol + this.writeNode(depth, child);
+        };
+        Module.prototype.compile = function (node) {
+            var _this = this;
+            if (Array.isArray(node)) {
+                return node.map(function (n) { return _this.writeNode(0, n); }).join("\n");
+            }
+            return this.writeNode(0, node);
+        };
+        Module.prototype.defineModule = function (name) {
+            return function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                var result = function scadModule() {
+                    var children = [];
+                    for (var _i = 0; _i < arguments.length; _i++) {
+                        children[_i] = arguments[_i];
+                    }
+                    return { type: "module", props: { name: name, args: args, children: children } };
+                };
+                Object.assign(result, { type: "object", props: { name: name, args: args } });
+                return result;
+            };
+        };
+        Module.prototype.defineModifier = function (symbol) {
+            return function (child) { return ({ type: "modifier", props: { symbol: symbol, child: child } }); };
         };
         return Module;
     }());

@@ -30,13 +30,15 @@ declare namespace Scad {
         comment?: string;
     }
     export class Variable<T> {
+        parent: Module;
         name: string;
         value: T;
         opts?: IVariableOpts;
-        constructor(name: string, value: T, opts?: IVariableOpts);
+        constructor(parent: Module, name: string, value: T, opts?: IVariableOpts);
         toString(): string;
     }
     export class Specials {
+        parent: Module;
         $fa: number | undefined;
         $fs: number | undefined;
         $fn: number | undefined;
@@ -47,7 +49,13 @@ declare namespace Scad {
         $vpf: number | undefined;
         $children: number | undefined;
         $preview: boolean | undefined;
+        constructor(parent: Module);
         toString(): string;
+    }
+    export interface IModuleOptions {
+        fs?: IFileSystem;
+        indent?: string;
+        banner?: string;
     }
     export class Module {
         any: any;
@@ -55,12 +63,34 @@ declare namespace Scad {
         specials: Specials;
         private entires;
         private variables;
+        private opts;
+        indent: string;
+        banner: string;
+        fs: IFileSystem | undefined;
+        constructor(opts?: IModuleOptions);
         addVariable<T>(name: string, value: T, opts?: IVariableOpts): Scad.Variable<T>;
         add(node: Scad.Node): Scad.Node;
         addMultiple(nodes: Scad.Node[]): Scad.Node[];
         toString(): string;
-        toFile(fs: IFileSystem, filename: string, verbose?: boolean): void;
-        toScadFile(fs: IFileSystem, src: string, verbose?: boolean): void;
+        toFile(filename: string, verbose?: boolean): void;
+        toScadFile(src: string, verbose?: boolean): void;
+        writeNode(depth: number, node: Scad.Node): string;
+        writeIndent(depth: number): string;
+        writeModule(depth: number, name: string, args: any[], children: Scad.Node[]): string;
+        writeObject(depth: number, name: string, args: any[]): string;
+        writeVariable(depth: number, name: string, args: any[]): string;
+        writeArgs(args: any[]): string;
+        writeValue(value: any, isArg?: boolean): string;
+        writeModifier(depth: number, symbol: string, child: Scad.Node): string;
+        compile(node: Scad.Node | Scad.Node[]): string;
+        defineModule(name: string): (...args: any[]) => (...children: Scad.Node[]) => {
+            type: string;
+            props: IModuleProps;
+        };
+        defineModifier(symbol: string): (child: Scad.Node) => {
+            type: string;
+            props: IModifierProps;
+        };
     }
     export interface IVector2 extends Array<number> {
         0: number;
