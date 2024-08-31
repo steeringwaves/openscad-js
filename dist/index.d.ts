@@ -85,11 +85,11 @@ declare namespace Scad {
         compile(node: Scad.Node | Scad.Node[]): string;
         defineModule(name: string): (...args: any[]) => (...children: Scad.Node[]) => {
             type: string;
-            props: IModuleProps;
+            props: Scad.IModuleProps;
         };
         defineModifier(symbol: string): (child: Scad.Node) => {
             type: string;
-            props: IModifierProps;
+            props: Scad.IModifierProps;
         };
     }
     export interface IVector2 extends Array<number> {

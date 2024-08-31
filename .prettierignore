@@ -3,6 +3,7 @@ node_modules/**/*
 .husky/**/*
 .gihub/**/*
 bin/**/*
+dist/**/*
 
 # Ignore all HTML files:
 *.html

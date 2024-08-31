@@ -1,13 +1,22 @@
 {
 	"extends": "@steeringwaves/eslint-config",
-	"ignorePatterns": ["examples"],
+	"ignorePatterns": [
+		"node_modules/"
+	],
 	"settings": {
 		"import/external-module-folders": [],
 		"import/resolver": {
 			"node": {
 				"extensions": [".js", ".jsx", ".ts", ".tsx", ".vue"],
-				"moduleDirectory": ["lib", "node_modules"]
+				"moduleDirectory": ["node_modules"]
+			},
+			"alias": {
+				"map": [["@/*", "./Vite/src"]],
+				"extensions": [".vue", ".ts", ".tsx"]
 			}
 		}
+	},
+	"parserOptions": {
+		"project": "**/tsconfig.json"
 	}
 }

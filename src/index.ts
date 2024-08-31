@@ -99,7 +99,7 @@ namespace Scad {
 		}
 
 		toString(): string {
-			const entries = Object.entries(this).filter(([k, v]) => undefined !== v);
+			const entries = Object.entries(this).filter(([k, v]) => undefined !== v && "parent" !== k);
 
 			if (0 === entries.length) {
 				return "";
