@@ -19,7 +19,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
 		"build": "tsc -p tsconfig.json",
 		"tsc": "tsc -p tsconfig.json --noEmit --strict",
-    "ci": "npm run build"
+    "ci": "npm run tsc && npm run build"
   },
   "repository": {
     "type": "git",

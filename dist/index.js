@@ -62,7 +62,12 @@ var Scad;
                 _root: this.defineModifier("!"),
                 _disable: this.defineModifier("*")
             }, {
-                get: function (obj, prop) { return (prop in obj ? obj[prop] : _this.defineModule(prop)); }
+                get: function (obj, prop) {
+                    if (prop in obj) {
+                        return obj[prop];
+                    }
+                    return _this.defineModule(prop);
+                }
             });
             this.any = proxyModules;
             this.modules = proxyModules;

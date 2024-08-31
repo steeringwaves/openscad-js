@@ -143,7 +143,13 @@ namespace Scad {
 					_disable: this.defineModifier("*")
 				},
 				{
-					get: (obj, prop) => (prop in obj ? obj[prop] : this.defineModule(prop as string))
+					get: (obj, prop) => {
+						if (prop in obj) {
+							return (obj as any)[prop];
+						}
+
+						return this.defineModule(prop as string);
+					}
 				}
 			);
 
