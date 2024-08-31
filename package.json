@@ -1,0 +1,50 @@
+{
+  "name": "@steeringwaves/openscad-js",
+  "version": "0.0.1",
+  "description": "openscad code generator for javascript",
+  "author": "steeringwaves",
+  "license": "ISC",
+  "homepage": "https://github.com/steeringwaves/openscad-js",
+  "keywords": [],
+  "engines": {
+    "node": ">=12"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+  "preferGlobal": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc -p tsconfig.json",
+		"tsc": "tsc -p tsconfig.json --noEmit --strict",
+    "ci": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steeringwaves/openscad-js"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@steeringwaves/eslint-config": "^1.0.4",
+    "@steeringwaves/prettier-config": "^1.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.32.0",
+    "eslint": "^8.45.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^17.0.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-vue": "^9.15.1",
+    "jest": "^28.1.1",
+    "jest-codemods": "^0.26.3",
+    "jest-junit": "^14.0.0",
+    "modclean": "^3.0.0-beta.1",
+    "prettier": "^2.8.8"
+  }
+}

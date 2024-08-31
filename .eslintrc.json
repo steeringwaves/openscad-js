@@ -1,0 +1,13 @@
+{
+	"extends": "@steeringwaves/eslint-config",
+	"ignorePatterns": ["examples"],
+	"settings": {
+		"import/external-module-folders": [],
+		"import/resolver": {
+			"node": {
+				"extensions": [".js", ".jsx", ".ts", ".tsx", ".vue"],
+				"moduleDirectory": ["lib", "node_modules"]
+			}
+		}
+	}
+}
