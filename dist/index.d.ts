@@ -1,6 +1,9 @@
 interface IFileSystem {
     writeFileSync(file: string, data: string): void;
 }
+interface IFileSystem {
+    writeFileSync(file: string, data: string): void;
+}
 declare namespace Scad {
     export type IVariable<T> = Variable<T> | T;
     export interface IVariableProps {
@@ -61,9 +64,8 @@ declare namespace Scad {
         any: any;
         modules: Modules;
         specials: Specials;
-        private entires;
+        private entries;
         private variables;
-        private opts;
         indent: string;
         banner: string;
         fs: IFileSystem | undefined;

@@ -3,6 +3,17 @@ interface IFileSystem {
 	writeFileSync(file: string, data: string): void;
 }
 
+function entriesWithout<T>(obj: T, list: string[]): [string, T[keyof T]][] {
+	return Object.entries(obj as any).filter(([k, v]) => v !== undefined && !list.includes(k)) as [string, T[keyof T]][];
+}
+
+const blacklistNames = ["parent", "indent", "fs", "banner", "opts"];
+
+/* eslint-disable max-classes-per-file */
+interface IFileSystem {
+	writeFileSync(file: string, data: string): void;
+}
+
 namespace Scad {
 	export type IVariable<T> = Variable<T> | T;
 
@@ -99,7 +110,7 @@ namespace Scad {
 		}
 
 		toString(): string {
-			const entries = Object.entries(this).filter(([k, v]) => undefined !== v && "parent" !== k);
+			const entries = entriesWithout(this, ["parent"]);
 
 			if (0 === entries.length) {
 				return "";
@@ -122,11 +133,9 @@ namespace Scad {
 
 		public specials: Specials;
 
-		private entires: Scad.Node[] = [];
+		private entries: Scad.Node[] = [];
 
 		private variables: Scad.Variable<any>[] = [];
-
-		private opts: IModuleOptions;
 
 		public indent = "\t";
 
@@ -159,8 +168,6 @@ namespace Scad {
 
 			this.specials = new Specials(this);
 
-			this.opts = opts;
-
 			if (undefined !== opts.fs) {
 				this.fs = opts.fs;
 			}
@@ -181,12 +188,12 @@ namespace Scad {
 		}
 
 		public add(node: Scad.Node): Scad.Node {
-			this.entires.push(node);
+			this.entries.push(node);
 			return node;
 		}
 
 		public addMultiple(nodes: Scad.Node[]): Scad.Node[] {
-			this.entires.push(...nodes);
+			this.entries.push(...nodes);
 			return nodes;
 		}
 
@@ -227,7 +234,7 @@ namespace Scad {
 				variableText += `\n`;
 			}
 
-			return `${this.banner}\n${this.specials.toString()}\n${variableText}\n${this.compile(this.entires)}`;
+			return `${this.banner}\n${this.specials.toString()}\n${variableText}\n${this.compile(this.entries)}`;
 		}
 
 		public toFile(filename: string, verbose?: boolean): void {
@@ -276,9 +283,11 @@ namespace Scad {
 		}
 
 		public writeModule(depth: number, name: string, args: any[], children: Scad.Node[]): string {
-			return `${name}(${this.writeArgs(args)}) {
-		${children.map((c) => this.writeIndent(depth + 1) + this.writeNode(depth + 1, c)).join("\n")}
-		${this.writeIndent(depth)}}`;
+			const childrentText = `${children
+				.map((c) => this.writeIndent(depth + 1) + this.writeNode(depth + 1, c))
+				.join("\n")}`;
+
+			return `${name}(${this.writeArgs(args)}) {\n${childrentText}\n${this.writeIndent(depth)}}`;
 		}
 
 		public writeObject(depth: number, name: string, args: any[]): string {
@@ -297,7 +306,7 @@ namespace Scad {
 						"boolean" === typeof arg ||
 						"string" === typeof arg ||
 						Array.isArray(arg) ||
-						Object.entries(arg).length > 0
+						entriesWithout(arg, blacklistNames).length > 0
 				)
 				.map((arg) => this.writeValue(arg, true))
 				.join(", ");
@@ -317,7 +326,7 @@ namespace Scad {
 				return `[${value.map((v) => this.writeValue(v)).join(", ")}]`;
 			}
 			if (isArg) {
-				return Object.entries(value)
+				return entriesWithout(value, blacklistNames)
 					.map(([k, v]) => `${k}=${this.writeValue(v)}`)
 					.join(", ");
 			}
