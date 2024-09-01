@@ -66,21 +66,78 @@ scad.add(sphere);
 console.log(scad.toString());
 ```
 
+## unsupported methods
+
+All the known methods of writing this document are supported with types in this library under the `modules` object. However in order to future proof a bit we also support a special object named `any` which allows you to call any new/unsupported methods anyways.
+
+```ts
+// modules.color is a supported method and has type checking
+scad.modules.color([255, 0, 0])(scad.modules.sphere({ r: 5 }));
+
+// any.color is identical to the above except that it has no type checking
+scad.any.color([255, 0, 0])(scad.modules.sphere({ r: 5 }));
+
+// any.dosomethingcool allows this module to support newer versions or custom modifications
+scad.any.dosomethingcool(100)(scad.modules.sphere({ r: 5 }));
+```
+
+## available functions under the modules object
+
+```txt
+  union
+  difference
+  intersection
+  translate
+  mirror
+  rotate
+  color
+  scale
+  resize
+  multimatrix
+  offset
+  fill
+  hull
+  minkowski
+  sphere
+  cube
+  cylinder
+  polyhedron
+  linear_extrude
+  rotate_extrude
+  square
+  circle
+  polygon
+  text
+  projection
+```
+
+## Special variables available under the specials object
+
+```txt
+  $fa
+  $fs
+  $fn
+  $t
+  $vpr
+  $vpt
+  $vpd
+  $vpf
+  $children
+  $preview
+```
+
+## custom variables
+
+Customizable variables are support by calling the `addVariable` method which will return a special type that can be reference in your code. NOTE: This is a bit of a hack because if the user changes this value from within openscad our javascript has already executed and will be unable to react to changes that aren't coded in already.
+
+```js
+const sphere_diameter = scad.addVariable("sphere_diameter", 5, { section: "Options", comment: "Diameter of the sphere" });
+const sphere = origin(scad.modules.sphere({ r: sphere_diameter }));
+```
+
 ## dev
 
 ```sh
-npm install
-
-# bundle with esbuild
-npm run build
-
-# run
-npm run bin
-
-# type help to see a list of available commands
-```
-
-```txt
-Available functions:
-  TODO
+yarn install
+yarn run format && yarn run ci
 ```
