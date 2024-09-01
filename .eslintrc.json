@@ -1,8 +1,6 @@
 {
 	"extends": "@steeringwaves/eslint-config",
-	"ignorePatterns": [
-		"node_modules/"
-	],
+	"ignorePatterns": ["node_modules/"],
 	"settings": {
 		"import/external-module-folders": [],
 		"import/resolver": {

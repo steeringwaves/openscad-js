@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"*": ["node_modules/*", "src/*"],
+			"*": ["node_modules/*", "src/*"]
 		},
 		"types": ["node", "jest", "@testing-library/jest-dom"],
 		"isolatedModules": true,
@@ -75,7 +75,7 @@
 
 		/* Completeness */
 		// "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-		// "skipLibCheck": true  
+		// "skipLibCheck": true
 	},
 	"ts-node": {
 		// these options are overrides used only by ts-node
@@ -84,11 +84,5 @@
 			"module": "commonjs"
 		}
 	},
-	"exclude": [
-		"node_modules",
-		".git",
-		"dist/",
-		"jest.config.js",
-		"test"
-	]
+	"exclude": ["node_modules", ".git", "dist/", "jest.config.js", "test"]
 }

@@ -1,45 +1,44 @@
 {
-  "name": "@steeringwaves/openscad-js",
-  "version": "0.0.3",
-  "description": "openscad code generator for javascript",
-  "author": "steeringwaves",
-  "license": "ISC",
-  "homepage": "https://github.com/steeringwaves/openscad-js",
-  "keywords": [],
-  "engines": {
-    "node": ">=12"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+	"name": "@steeringwaves/openscad-js",
+	"version": "0.0.3",
+	"description": "openscad code generator for javascript",
+	"author": "steeringwaves",
+	"license": "ISC",
+	"homepage": "https://github.com/steeringwaves/openscad-js",
+	"keywords": [],
+	"engines": {
+		"node": ">=12"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-  "preferGlobal": true,
-  "scripts": {
+	"preferGlobal": true,
+	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"tsc": "tsc -p tsconfig.json --noEmit --strict",
 		"test": "jest --ci --coverage=false --force-exit",
 		"test-leaks": "jest --coverage=false --detectOpenHandles",
 		"cover": "jest --ci --coverage=true --force-exit",
 		"test-ci": "jest --ci --coverage=true --force-exit --bail",
-		"ci": "npm run format-check && npm run tsc && npm run test-ci && npm run build",
+		"ci": "corepack yarn run format-check && corepack yarn run tsc && corepack yarn run test-ci && corepack yarn run build",
 		"watch": "jest --watch",
 		"lint": "eslint .",
 		"lint-staged": "eslint $(git diff --name-only HEAD | grep -E '\\.(js|jsx|.ts|.tsx)$' | xargs)",
 		"fix": "eslint . --fix",
 		"fix-staged": "eslint --fix $(git diff --name-only HEAD | grep -E '\\.(js|jsx|.ts|.tsx)$' | xargs)",
-		"format-check": "prettier --config .prettierrc.json . --check",
-		"format": "prettier --config .prettierrc.json . --write",
-		"format-staged": "prettier --config .prettierrc.json --write $(git diff --name-only HEAD | grep -v '.snap$' | xargs)",
+		"format-check": "prettier --config .prettierrc . --check",
+		"format": "prettier --config .prettierrc . --write",
+		"format-staged": "prettier --config .prettierrc --write $(git diff --name-only HEAD | grep -v '.snap$' | xargs)",
 		"snapshot": "jest --updateSnapshot"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/steeringwaves/openscad-js"
-  },
-  "dependencies": {
-  },
-  "devDependencies": {
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/steeringwaves/openscad-js"
+	},
+	"dependencies": {},
+	"devDependencies": {
 		"@steeringwaves/eslint-config": "^1.0.9",
 		"@steeringwaves/prettier-config": "^1.0.2",
 		"@testing-library/jest-dom": "^6.0.1",
@@ -68,5 +67,5 @@
 		"ts-jest": "^29.1.1",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.1.6"
-  }
+	}
 }
