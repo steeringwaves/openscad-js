@@ -135,7 +135,7 @@ const sphere_diameter = scad.addVariable("sphere_diameter", 5, { section: "Optio
 const sphere = origin(scad.modules.sphere({ r: sphere_diameter }));
 ```
 
-## dev
+## development
 
 ```sh
 yarn install
