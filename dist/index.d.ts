@@ -243,3 +243,4 @@ declare namespace Scad {
     export {};
 }
 export default Scad;
+//# sourceMappingURL=index.d.ts.map
