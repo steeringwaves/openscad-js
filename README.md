@@ -66,6 +66,50 @@ scad.add(sphere);
 console.log(scad.toString());
 ```
 
+## js2scad cli
+
+This package ships a small cli that runs a model and (optionally) re-runs it whenever a source file changes. It boots
+node with `ts-node` for typescript models, so there is nothing to configure beyond having `ts-node` and `typescript`
+installed alongside your models.
+
+```sh
+# run a model once, it writes its own .scad (via scad.toScadFile(__filename))
+npx js2scad jscad/models/example1/example1.ts
+
+# same thing, but re-run on every save
+npx js2scad --watch jscad/models/example1/example1.ts
+
+# type checking is the slow part, skip it while iterating
+npx js2scad --watch --transpile-only jscad/models/example1/example1.ts
+
+# anything after -- is handed to the model itself as process.argv
+npx js2scad model.ts -- --width 40
+```
+
+```txt
+usage:
+  js2scad [options] <file> [-- <model args>]
+
+options:
+  -w, --watch            re-run whenever the model or one of its local imports changes
+  -T, --transpile-only   skip typescript type checking (much faster rebuilds)
+  -C, --cwd <dir>        working directory used to run the model (default: current directory)
+  -c, --clear            clear the screen before each re-run (watch mode only)
+  -q, --quiet            only report failures
+  -h, --help             show this help
+  -v, --version          show the js2scad version
+```
+
+Notes:
+
+-   The model decides where its output lands, `js2scad` never writes the `.scad` itself. It only reports the file when it
+    notices one was written next to the model.
+-   Watch mode tracks the model's real dependency list (every non `node_modules` file it loaded), so editing a shared
+    helper triggers a rebuild too.
+-   Status output goes to stderr, so `js2scad model.ts > model.scad` still works for models that print with
+    `console.log(scad.toString())`.
+-   Both `.js` and `.ts` models are supported, `ts-node` is only required for the typescript ones.
+
 ## unsupported methods
 
 All the known methods of writing this document are supported with types in this library under the `modules` object. However in order to future proof a bit we also support a special object named `any` which allows you to call any new/unsupported methods anyways.

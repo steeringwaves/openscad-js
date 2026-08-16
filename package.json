@@ -14,9 +14,13 @@
 	},
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"bin": {
+		"js2scad": "dist/cli.js"
+	},
 	"preferGlobal": true,
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json && node -e \"require('fs').chmodSync('dist/cli.js', 0o755)\"",
+		"js2scad": "ts-node src/cli.ts",
 		"tsc": "tsc -p tsconfig.json --noEmit --strict",
 		"test": "jest --ci --coverage=false --force-exit",
 		"test-leaks": "jest --coverage=false --detectOpenHandles",
