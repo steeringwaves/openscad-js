@@ -72,18 +72,37 @@ This package ships a small cli that runs a model and (optionally) re-runs it whe
 node with `ts-node` for typescript models, so there is nothing to configure beyond having `ts-node` and `typescript`
 installed alongside your models.
 
+### installing it
+
+```sh
+# as a project dependency, gives you node_modules/.bin/js2scad
+npm install --save-dev @steeringwaves/openscad-js
+npx js2scad model.ts          # or `yarn js2scad model.ts`, or plain `js2scad` inside a package.json script
+
+# or globally, gives you a js2scad on your PATH anywhere
+npm install -g @steeringwaves/openscad-js
+js2scad model.ts
+```
+
+A bare `js2scad` in your shell only works with the global install, a project install puts the command in
+`node_modules/.bin` which npm/yarn add to the path for `npx`, `yarn` and package scripts. Without any install you would
+need `npx -p @steeringwaves/openscad-js js2scad model.ts`, since `npx js2scad` alone looks for a package named
+`js2scad`.
+
+### using it
+
 ```sh
 # run a model once, it writes its own .scad (via scad.toScadFile(__filename))
-npx js2scad jscad/models/example1/example1.ts
+js2scad jscad/models/example1/example1.ts
 
 # same thing, but re-run on every save
-npx js2scad --watch jscad/models/example1/example1.ts
+js2scad --watch jscad/models/example1/example1.ts
 
 # type checking is the slow part, skip it while iterating
-npx js2scad --watch --transpile-only jscad/models/example1/example1.ts
+js2scad --watch --transpile-only jscad/models/example1/example1.ts
 
 # anything after -- is handed to the model itself as process.argv
-npx js2scad model.ts -- --width 40
+js2scad model.ts -- --width 40
 ```
 
 ```txt
